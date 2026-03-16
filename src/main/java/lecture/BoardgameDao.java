@@ -15,7 +15,6 @@ public class BoardgameDao {
     private final Connection conn;
     private static final String GET_BOARDGAME_SQL = "SELECT brettspill_id, navn, type, antall_spillere, spilletid, aldersgrense, bilde FROM Brettspill WHERE brettspill_id=?";
     private static final String ADD_BOARDGAME_NO_ID_SQL = "INSERT INTO Brettspill (navn, type, antall_spillere, spilletid, aldersgrense, bilde) VALUES(?,?,?,?,?,?)";
-    //private static final String ADD_BOARDGAME_SQL = "INSERT INTO Brettspill VALUES(?,?,?,?,?,?,?)";
 
     public BoardgameDao(Connection conn) {
         this.conn = conn;
