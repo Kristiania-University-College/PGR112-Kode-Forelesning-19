@@ -1,4 +1,4 @@
-# Forelesning 19 - JDBC Transaksjoner
+# Forelesning 19 - JDBC Optional, auto-increment, transactions
 
 > Forelesningskoden finner du i `src/main/java/lecture`-mappen.
 > 
