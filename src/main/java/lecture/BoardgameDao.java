@@ -1,8 +1,8 @@
 package lecture;
 
 import java.sql.*;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class BoardgameDao {
     /*
@@ -13,45 +13,17 @@ public class BoardgameDao {
     *
      */
     private final Connection conn;
-    private static final String GET_ALL_BOARDGAMES_SQL = "SELECT brettspill_id, navn, type, antall_spillere, spilletid, aldersgrense, bilde FROM Brettspill";
     private static final String GET_BOARDGAME_SQL = "SELECT brettspill_id, navn, type, antall_spillere, spilletid, aldersgrense, bilde FROM Brettspill WHERE brettspill_id=?";
-    private static final String ADD_BOARDGAME_SQL = "INSERT INTO Brettspill VALUES(?,?,?,?,?,?,?)";
-    private static final String UPDATE_BOARDGAME_SQL = "UPDATE Brettspill SET navn=?, type=?, antall_spillere=?, spilletid=?, aldersgrense=?, bilde=? WHERE brettspill_id=?";
-    private static final String DELETE_BOARDGAME_SQL = "DELETE FROM Brettspill WHERE brettspill_id =?";
+    private static final String ADD_BOARDGAME_NO_ID_SQL = "INSERT INTO Brettspill (navn, type, antall_spillere, spilletid, aldersgrense, bilde) VALUES(?,?,?,?,?,?)";
+    //private static final String ADD_BOARDGAME_SQL = "INSERT INTO Brettspill VALUES(?,?,?,?,?,?,?)";
 
     public BoardgameDao(Connection conn) {
         this.conn = conn;
     }
 
-    public List<BoardGame> getAllBoardGames() {
 
-        List<BoardGame> boardGames = new ArrayList<>();
-        try (
-                Statement statement = conn.createStatement();
-                ResultSet rs = statement.executeQuery("SELECT * FROM brettspill")
-        ) {
-
-
-            while (rs.next()) {
-                int id = rs.getInt("brettspill_id");
-                String name = rs.getString("navn");
-                String type = rs.getString("type");
-                int nrOfPlayers = rs.getInt("antall_spillere");
-                int minutes = rs.getInt("spilletid");
-                int ageLimit = rs.getInt("aldersgrense");
-                String imageUrl = rs.getString("bilde");
-                BoardGame bg = new BoardGame(id, name, type, nrOfPlayers, minutes, ageLimit, imageUrl);
-                boardGames.add(bg);
-            }
-
-        } catch (SQLException e) {
-            IO.println("Unable to connect to database:" + e.getMessage());
-            e.printStackTrace();
-        }
-    return boardGames;
-    }
-
-    public BoardGame getBoardGame(int boardGameId) throws SQLException {
+    // Optional
+    public Optional<BoardGame> getBoardGame(int boardGameId) throws SQLException {
         try (
              PreparedStatement statement = conn.prepareStatement(GET_BOARDGAME_SQL);
         ) {
@@ -64,52 +36,69 @@ public class BoardgameDao {
                     int minutes = rs.getInt("spilletid");
                     int ageLimit = rs.getInt("aldersgrense");
                     String imageUrl = rs.getString("bilde");
-                    return new BoardGame(boardGameId, name, type, nrOfPlayers, minutes, ageLimit, imageUrl);
+                    return Optional.of(new BoardGame(name, type, nrOfPlayers, minutes, ageLimit, imageUrl));
                 }
             }
             // No board game found...
-            return null; // We will look at other options than returning null later...
+            return Optional.empty();
         }
     }
 
-    public int addBoardGame(BoardGame bg) throws SQLException {
+
+    // auto-inkrement
+    public int addBoardGame(String name, String type, int nrOfPlayers, int minutes, int ageLimit, String imageUrl) throws SQLException {
         try (
-             PreparedStatement statement = conn.prepareStatement(ADD_BOARDGAME_SQL);
+             PreparedStatement statement = conn.prepareStatement(ADD_BOARDGAME_NO_ID_SQL, Statement.RETURN_GENERATED_KEYS);
         ) {
-            statement.setInt(1, bg.id());
-            statement.setString(2, bg.name());
-            statement.setString(3, bg.type());
-            statement.setInt(4, bg.nrOfPlayers());
-            statement.setInt(5, bg.minutes());
-            statement.setInt(6, bg.ageLimit());
-            statement.setString(7, bg.imageUrl());
-            return statement.executeUpdate();
+            statement.setString(1, name);
+            statement.setString(2, type);
+            statement.setInt(3, nrOfPlayers);
+            statement.setInt(4, minutes);
+            statement.setInt(5, ageLimit);
+            statement.setString(6, imageUrl);
+            int rowsUpdated = statement.executeUpdate();
+            if(rowsUpdated==1){
+                try(ResultSet keys = statement.getGeneratedKeys()){
+                    if(keys.next()){
+                        return keys.getInt(1);
+                    }
+                }
+            }
+        }
+        return 0;
+    }
+
+    // transaction
+    public void addBoardGames(List<BoardGame> newBoardGames) throws SQLException {
+        try (
+             PreparedStatement statement = conn.prepareStatement(ADD_BOARDGAME_NO_ID_SQL, Statement.RETURN_GENERATED_KEYS);
+        ) {
+            boolean autoCommit = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try{
+                for (BoardGame newBoardGame : newBoardGames) {
+                    //statement.setInt(1, newBoardGame.id());
+                    statement.setString(1, newBoardGame.name());
+                    statement.setString(2, newBoardGame.type());
+                    statement.setInt(3, newBoardGame.nrOfPlayers());
+                    statement.setInt(4, newBoardGame.minutes());
+                    statement.setInt(5, newBoardGame.ageLimit());
+                    statement.setString(6, newBoardGame.imageUrl()); //demonstrate wrong index
+                    statement.executeUpdate();
+                }
+                conn.commit();
+            } catch (SQLException sqle){
+                System.out.println("Exception caught. Rolling back transaction.");
+                conn.rollback();
+                throw sqle;
+            } finally {
+                // Setting the commit mode to what it was originally.
+                conn.setAutoCommit(autoCommit);
+            }
+
         }
     }
 
-    public int updateBoardGame(BoardGame bg) throws SQLException {
-        try (
-             PreparedStatement statement = conn.prepareStatement(UPDATE_BOARDGAME_SQL);
-        ) {
-            statement.setString(1, bg.name());
-            statement.setString(2, bg.type());
-            statement.setInt(3, bg.nrOfPlayers());
-            statement.setInt(4, bg.minutes());
-            statement.setInt(5, bg.ageLimit());
-            statement.setString(6, bg.imageUrl());
-            statement.setInt(7, bg.id());
-            return statement.executeUpdate();
-        }
-    }
-
-    public int deleteBoardGame(int boardGameId) throws SQLException {
-        try (
-             PreparedStatement statement = conn.prepareStatement(DELETE_BOARDGAME_SQL);
-        ) {
-            statement.setInt(1, boardGameId);
-            return statement.executeUpdate();
-        }
-    }
 
 
 

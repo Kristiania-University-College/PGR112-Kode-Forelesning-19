@@ -32,5 +32,4 @@ INSERT INTO brettspill (navn, type, antall_spillere, spilletid, aldersgrense, bi
 ('Monopol', 'Strategi', 2, 120, 8, 'monopol.jpg'),
 ('Trivial Pursuit', 'Trivia', 2, 90, 12, 'trivial_pursuit.jpg'),
 ('Uno', 'Kort', 2, 199, 99, 'uno.jpg'),
-('Yahtzee', 'Terning', 2, 20, 6, 'yahtzee.jpg'),
-('Citadels', 'Strategi', 5, 180, 12, 'citadels.jpg');
+('Yahtzee', 'Terning', 2, 20, 6, 'yahtzee.jpg');

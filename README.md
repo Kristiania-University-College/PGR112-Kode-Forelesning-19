@@ -1,4 +1,4 @@
-# Forelesning 18 - JDBC Prepared statement
+# Forelesning 19 - JDBC Prepared statement
 
 > Forelesningskoden finner du i `src/main/java/lecture`-mappen.
 > 
